@@ -11,3 +11,14 @@
 {{ bar }}
 </pre>
 
+<pre markdown="1">
+{%- assign bar = "+------------------------------------------+------------+" -%}
+{{ bar }}
+| Post                                      | Date       |
+{{ bar }}
+{%- assign pad = "                                          " -%}  <!-- 42 spaces -->
+{%- for post in site.posts -%}
+| [{{ post.title | append: pad | slice: 0, 42 }}]({{ post.url | relative_url }}) | {{ post.date | date: "%Y-%m-%d" }} |
+{%- endfor -%}
+{{ bar }}
+</pre>
