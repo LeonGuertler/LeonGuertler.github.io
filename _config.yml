@@ -2,3 +2,4 @@ include: ["assets"]
 plugins: ["jekyll-include-cache"]   # built-in on Pages
 title:  "Blogs"
 theme:  jekyll-theme-minimal     # built-in, zero setup
+future: true          # ← add this line
