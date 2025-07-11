@@ -3,15 +3,15 @@ layout: page
 title: "👋 Welcome"
 ---
 
-A minimal AI notebook, rendered entirely in **Ubuntu Mono**.
-
 <pre>
 {% assign bar = "+------------------------------+------------+" %}
 {{ bar }}
 | Post                         | Date       |
 {{ bar }}
 {% for post in site.posts %}
-| {{ post.title | printf: "%-28s" }} | {{ post.date | date: "%Y-%m-%d" }} |
+{%  comment %} pad each title to 28 chars {% endcomment %}
+{% assign padded = post.title | append: "                            " | slice: 0, 28 %}
+| {{ padded }} | {{ post.date | date: "%Y-%m-%d" }} |
 {% endfor %}
 {{ bar }}
 </pre>
