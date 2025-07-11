@@ -22,6 +22,7 @@
 {%- assign pad = "                                          " -%}  {# 42 spaces #}
 {%- for post in site.posts -%}
 | <a href="{{ post.url | relative_url }}" style="color:inherit;text-decoration:none;">{{ post.title | append: pad | slice: 0, 42 }}</a> | {{ post.date | date: "%Y-%m-%d" }} |
+
 {%- endfor -%}
 {{ bar }}
 </pre>
