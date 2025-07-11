@@ -4,45 +4,16 @@ title:  "MindGames (NeurIPS 2025 Competition)"
 date:   2025-07-14
 ---
 
-<!-- Optional excerpt for RSS / list views -->
-The new **MindGames** competition challenges agents to learn *reasoning-heavy*
-board- and card-game skills under tight compute budgets.  
-In this post I walk through the tracks, show baselines, and share tips for
-bootstrapping your own entry.
+**MindGames** is a a NeurIPS25 competition for text-based games that Bobby and I helped organize. Since we are obviously not allowed to participated, we wanted to write this short blog explaining how we would use UnstableBaselines (TODO link to it), to train a model an submit it to the competition (optimally giving you a small edge over your competition).
 
-<!-- More tag (optional): everything above this line shows in index excerpts -->
-<!--more-->
+MindGames has two main trackes focused on TheoryOfMindGames (one for 'Secretmafia-v0' and one for `Codenames-v0`, `ColonelBlotto-v0` and `ThreePlayerIPD-v0`). In our experience, the biggest challange is training small (i.e. <8B) models on games where the action output is part of the next players observation. In this blog we will focus on track two, since `ThreePlayerIPD-v0` is the only such environment in it.
 
-## 🗺️ Table of Contents
-1. [What is MindGames?](#what-is-mindgames)
-2. [Competition Tracks](#competition-tracks)
-3. [Baseline Starter Kit](#baseline-starter-kit)
-4. [Training Pipeline Walk-through](#training-pipeline-walk-through)
-5. [Tips for a Strong Submission](#tips-for-a-strong-submission)
-6. [Resources & Links](#resources--links)
+Since we have also been training on these games for a couple of months, we created version of them where the observations are structured in a training-friendly manner (you can just use the suffic `-train`; i.e. `Codenames-v0` -> `Codenames-v0-train`). This will work both for offline training and your online submission.
 
----
+First things first, we need to decide on a model and build the training script. In Spiral (TODO link to paper) we used the __Qwen3-4B-Base__ model so we can show the OOD math improvement of self-play. However, in this context that won't be necessary, and since the parameter limit is 8B, we will use the __Qwen3-8B__ model (i.e. instruction tuned).
 
-## What is MindGames?
+As for the training script, since 8b is rather big, we will use UnstableBaselines, which uses LoRA and activation checkpointing, thus 48GB of vRam should be enough (for this blog we will use our 3x RTX6000 ada machine; if you only have access to 24gb of vRam you will likely have to go with the 4B version).
 
-MindGames is a NeurIPS 2025 competition aimed at **multi-step reasoning** under
-strict model-size constraints (<&nbsp;150 M parameters).  
-Participants build agents that play a suite of text-based games drawn from the
-*TextArena* benchmark.
+You can install UnstableBaselines via `pip install unstable-rl` (this will also install TextArena).
 
-## Competition Tracks
 
-| Track | Environment | Goal | Constraint |
-|-------|-------------|------|------------|
-| **1** | *Liars Dice* | Maximise average reward vs. fixed bots | 50 M params |
-| **2** | *Nim*        | Beat adaptive opponents | 100 M params |
-| **3** | *Kuhn Poker* | Highest ELO after round-robin | 150 M params |
-
-## Baseline Starter Kit
-
-Clone the official repo:
-
-```shell
-git clone https://github.com/neurips-competitions/mindgames.git
-cd mindgames
-pip install -r requirements.txt
