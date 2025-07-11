@@ -1,0 +1,12 @@
+@import url("https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap");
+
+/* Apply everywhere and centre the block-level content */
+html, body {
+  font-family: "Ubuntu Mono", monospace;
+  text-align: center;
+  margin: 0;
+}
+
+pre, code {           /* redundant but explicit */
+  font-family: "Ubuntu Mono", monospace;
+}
