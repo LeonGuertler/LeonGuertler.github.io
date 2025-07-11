@@ -1,2 +1,16 @@
-@import url("https://fonts.googleapis.com/css2?family=Ubuntu+Mono&display=swap");
-body, pre, code { font-family: "Ubuntu Mono", monospace; }
+/* 1 · Pull the font from Google’s CDN */
+@import url("https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap");
+
+/* 2 · Apply it site-wide and centre-align all text */
+html,
+body {
+  font-family: "Ubuntu Mono", monospace;
+  text-align: center;          /* centre everything */
+  margin: 0;                   /* optional: remove default body margin */
+}
+
+/* 3 · Keep code blocks explicitly mono (redundant but clear) */
+pre,
+code {
+  font-family: "Ubuntu Mono", monospace;
+}
