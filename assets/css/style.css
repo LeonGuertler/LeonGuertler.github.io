@@ -3,7 +3,7 @@
 /* Apply everywhere and centre the block-level content */
 html, body {
   font-family: "Ubuntu Mono", monospace;
-  text-align: center;
+  /* text-align: center; */
   margin: 0;
 }
 
