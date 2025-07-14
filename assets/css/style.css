@@ -103,4 +103,5 @@ code {
 
 .code-wrapper .copy-btn:hover {
   background: #5a5a5a;
+  top: -2.0rem;
 }
