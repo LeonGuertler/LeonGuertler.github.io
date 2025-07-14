@@ -24,7 +24,7 @@ You can install UnstableBaselines via ```pip install unstable-rl``` (this will a
 Now we can set up the training script. I will first explain the components one by one, and then post the full script at the bottom.
 
 First we need to import all relevant packages; specifically, **ray**, **unstable** (the package name for UnstableBaselines) and the reward transformations from UnstableBaselines.
-```python3
+```python
 import ray, unstable, time # (time is just used to specify the run name)
 import unstable.reward_transformations as retra
 ```
