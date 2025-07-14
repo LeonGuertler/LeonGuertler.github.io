@@ -3,7 +3,7 @@
 
 html, body {
   font-family: "Ubuntu Mono", monospace;
-  background-color: #4e4e4e !important; /* Add !important to force the override */
+  background-color: #464646; /*!important; /* Add !important to force the override */
   color: #c5bfbf; /* Light text */
   margin: 0;
   padding: 1em;
@@ -41,7 +41,7 @@ code {
 }
 
 .highlight {
-  background-color: transparent !important; /* Override Rouge theme bg */
+  background-color: transparent /*!important; /* Override Rouge theme bg */
 }
 
 .highlight pre {
