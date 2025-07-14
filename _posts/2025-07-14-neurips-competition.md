@@ -24,8 +24,10 @@ You can install UnstableBaselines via ```pip install unstable-rl``` (this will a
 Now we can set up the training script. I will first explain the components one by one, and then post the full script at the bottom.
 
 First we need to import all relevant packages; specifically, **ray**, **unstable** (the package name for UnstableBaselines) and the reward transformations from UnstableBaselines.
+
 ```python
-import ray, unstable, time # (time is just used to specify the run name)
+
+import ray, unstable, time 
 import unstable.reward_transformations as retra
 ```
 
@@ -55,14 +57,41 @@ ray.init(namespace="unstable") # the namespace is mostly important for the termi
 # initialize environment scheduler
 env_sampler = unstable.samplers.env_samplers.UniformRandomEnvSampler(
     train_env_specs=[
-        unstable.TrainEnvSpec(env_id="Codenames-v0-train", num_players=4, num_actors=4, prompt_template="llama-instruct-zs"),
-        unstable.TrainEnvSpec(env_id="ColonelBlotto-v0-train", num_players=2, num_actors=2, prompt_template="llama-instruct-zs"),
-        unstable.TrainEnvSpec(env_id="ThreePlayerIPD-v0-train", num_players=3, num_actors=3, prompt_template="llama-instruct-zs"),
+        unstable.TrainEnvSpec(
+            env_id="Codenames-v0-train", 
+            num_players=4, 
+            num_actors=4, 
+            prompt_template="llama-instruct-zs"
+        ),
+        unstable.TrainEnvSpec(
+            env_id="ColonelBlotto-v0-train", 
+            num_players=2, 
+            num_actors=2, 
+            prompt_template="llama-instruct-zs"
+        ),
+        unstable.TrainEnvSpec(
+            env_id="ThreePlayerIPD-v0-train", 
+            num_players=3, 
+            num_actors=3, 
+            prompt_template="llama-instruct-zs"
+        ),
     ],
     eval_env_specs=[
-        unstable.EvalEnvSpec(env_id="Codenames-v0-train", num_players=4, prompt_template="llama-instruct-zs"),
-        unstable.EvalEnvSpec(env_id="ColonelBlotto-v0-train", num_players=2, prompt_template="llama-instruct-zs"),
-        unstable.EvalEnvSpec(env_id="ThreePlayerIPD-v0-train", num_players=3, prompt_template="llama-instruct-zs"),
+        unstable.EvalEnvSpec(
+            env_id="Codenames-v0-train", 
+            num_players=4, 
+            prompt_template="llama-instruct-zs"
+        ),
+        unstable.EvalEnvSpec(
+            env_id="ColonelBlotto-v0-train", 
+            num_players=2, 
+            prompt_template="llama-instruct-zs"
+        ),
+        unstable.EvalEnvSpec(
+            env_id="ThreePlayerIPD-v0-train", 
+            num_players=3, 
+            prompt_template="llama-instruct-zs"
+        ),
 ])
 ```
 
