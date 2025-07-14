@@ -1,12 +1,59 @@
 @import url("https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap");
+@import url("/assets/css/rouge.css"); /* Add this for syntax highlighting */
 
-/* Apply everywhere and centre the block-level content */
 html, body {
   font-family: "Ubuntu Mono", monospace;
-  /* text-align: center; */
+  background-color: #121212; /* Dark bg */
+  color: #e0e0e0; /* Light text */
   margin: 0;
+  padding: 1em;
 }
 
-pre, code {           /* redundant but explicit */
+a {
+  color: #bb86fc; /* Purple links for visibility */
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+header, main {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+pre, code {
   font-family: "Ubuntu Mono", monospace;
+  background-color: #1e1e1e; /* Darker code bg */
+  color: #e0e0e0;
+}
+
+pre {
+  padding: 1em;
+  border-radius: 5px;
+  overflow-x: auto;
+  position: relative;
+}
+
+code {
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+/* Copy button styles (added in Step 3) */
+.copy-btn {
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+  background-color: #333;
+  color: #fff;
+  border: none;
+  padding: 0.5em;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 0.8em;
+}
+
+.copy-btn:hover {
+  background-color: #555;
 }
