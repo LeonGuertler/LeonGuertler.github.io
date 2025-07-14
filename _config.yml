@@ -1,14 +1,54 @@
-include: ["assets"]
-plugins: ["jekyll-include-cache"]   # built-in on Pages
-title:  ""
-theme:  jekyll-theme-minimal     # built-in, zero setup
-future: true          # ← add this line
+# ---------- Site basics ----------
+title:          ""                   # site-wide <title>; empty = use page titles
+theme:          jekyll-theme-minimal # built-in, zero-setup
+future:         true                 # render future-dated posts
 
-markdown: kramdown
-highlighter: rouge
+# ---------- Files / plugins ----------
+include:        ["assets"]           # keep CSS & other assets
+plugins:        ["jekyll-include-cache"]  # built-in on GitHub Pages
+
+# ---------- Markdown & code ----------
+markdown:       kramdown
+highlighter:    rouge                # syntax highlighting engine
 
 kramdown:
-  input: GFM              # GitHub-flavoured markdown (fenced code, tables…)
+  input: GFM                         # GitHub-flavoured Markdown
+  parse_block_html: true             # allow raw HTML inside Markdown
+
+  # Tell Kramdown/Rouge **not** to pass code fences through Liquid.
   syntax_highlighter_opts:
+    disable_liquid_highlight: true   # ← the crucial flag
     span:
-      line_numbers: false
+      line_numbers: false            # (optional) turn off inline line numbers
+
+# ---------- Permalinks (optional) ----------
+# permalink: /:year/:month/:day/:title/
+
+# ---------- Build settings (optional) ----------
+# exclude:
+#   - node_modules
+#   - vendor
+#   - Gemfile*
+#
+# keep_files: ["CNAME"]              # files to leave in place on rebuild
+#
+# markdown_ext: "markdown,mkdn,mkdown,md"  # extra extensions to treat as MD
+
+# ---------- Collections & defaults (optional) ----------
+# collections:
+#   tutorials:
+#     output: true
+#
+# defaults:
+#   - scope:
+#       path: ""
+#       type: "posts"
+#     values:
+#       layout: "post"
+#       author: "Leon"
+
+# ---------- Deploy target (optional) ----------
+# For GitHub Pages you normally omit 'url' & 'baseurl';
+# add them only for a custom domain:
+# url:      "https://example.com"
+# baseurl:  ""

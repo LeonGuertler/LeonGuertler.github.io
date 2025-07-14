@@ -60,7 +60,6 @@ env_sampler = unstable.samplers.env_samplers.UniformRandomEnvSampler(
 ])
 ```
 
-The __TrainEnvSpec__ expects the **env_id** (same as in TextArena), the **num_players** of the environment, the **num_actors** we want to use to collect data (i.e. if num_players==num_actors we will use mirror self-play with no opponent sampling) and the **prompt_template** used to process the observations.
-
+The __TrainEnvSpec__ expects the **env_id** (same as in TextArena), the **num_players** of the environment, the **num_actors** we want to use to collect data (i.e. if num_players==num_actors we will use mirror self-play with no opponent sampling) and the **prompt_template** used to process the observations. The __EvalEnvSpec__ will use 
 
 
