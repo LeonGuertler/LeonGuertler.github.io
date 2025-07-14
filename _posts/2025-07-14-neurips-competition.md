@@ -14,6 +14,6 @@ First things first, we need to decide on a model and build the training script. 
 
 As for the training script, since 8b is rather big, we will use UnstableBaselines, which uses LoRA and activation checkpointing, thus 48GB of vRam should be enough (for this blog we will use our 3x RTX6000 ada machine; if you only have access to 24gb of vRam you will likely have to go with the 4B version).
 
-You can install UnstableBaselines via `pip install unstable-rl` (this will also install TextArena).
+You can install UnstableBaselines via ```pip install unstable-rl``` (this will also install TextArena).
 
 
