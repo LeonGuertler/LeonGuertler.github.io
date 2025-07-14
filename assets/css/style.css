@@ -3,7 +3,7 @@
 
 html, body {
   font-family: "Ubuntu Mono", monospace;
-  background-color: #806b6b !important; /* Add !important to force the override */
+  background-color: #4e4e4e !important; /* Add !important to force the override */
   color: #c5bfbf; /* Light text */
   margin: 0;
   padding: 1em;
@@ -103,5 +103,5 @@ code {
 
 .code-wrapper .copy-btn:hover {
   background: #5a5a5a;
-  top: -2.0rem;
+  top: -1.5rem;
 }
