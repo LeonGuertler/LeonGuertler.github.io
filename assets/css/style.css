@@ -24,7 +24,7 @@ header, main {
 
 pre, code {
   font-family: "Ubuntu Mono", monospace;
-  background-color: #121212; /* Match site bg to remove odd gray */
+  background-color: transparent; /* No background */
   color: #e0e0e0;
 }
 
@@ -33,17 +33,15 @@ pre {
   border-radius: 5px;
   overflow-x: auto;
   position: relative;
-  border: 1px solid #333; /* Subtle border to keep blocks distinct without color contrast */
 }
 
 code {
   padding: 0.2em 0.4em;
   border-radius: 3px;
-  border: 1px solid #333; /* Optional: subtle border for inline code too */
 }
 
 .highlight {
-  background-color: #121212; /* Override any Rouge theme bg */
+  background-color: transparent !important; /* Override Rouge theme bg */
 }
 
 .highlight pre {
