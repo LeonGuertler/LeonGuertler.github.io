@@ -16,4 +16,51 @@ As for the training script, since 8b is rather big, we will use UnstableBaseline
 
 You can install UnstableBaselines via ```pip install unstable-rl``` (this will also install TextArena).
 
+Now we can set up the training script. I will first explain the components one by one, and then post the full script at the bottom.
+
+First we need to import all relevant packages; specifically, **ray**, **unstable** (the package name for UnstableBaselines) and the reward transformations from UnstableBaselines.
+```python3
+import ray, unstable
+import unstable.reward_transformations as retra
+```
+
+
+Now we can build initialize constants and build the two necessary configuration configs (namely, the lora_config, specifying the lora size and which layers to apply it to, and the vllm_config, specifying out generation hyperparameters):
+```python3
+MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
+MAX_GENERATION_LENGTH = 4096
+MAX_TRAIN_SEQ_LEN = None # if you are running out of vRam, you can decrease this.
+
+lora_config = {
+    "lora_rank": 32, "lora_alpha": 32, "lora_dropout": 0.0,
+    "target_modules": ["q_proj","k_proj","v_proj","o_proj","gate_proj", "up_proj","down_proj"]
+}
+vllm_config = {
+    "model_name": MODEL_NAME, "temperature": 0.6, "max_tokens": MAX_GENERATION_LENGTH,
+    "max_parallel_seq": 128, "max_loras": 8, "lora_config": lora_config,
+    "max_model_len": 8192
+}
+```
+
+With everything imported and specified, we can now initialize ray and start building the relevant modules from unstable.
+```python3
+ray.init(namespace="unstable") # the namespace is mostly important for the terminal_interface.py script (which loads the modules from the "unstable" namespace)
+
+# initialize environment scheduler
+env_sampler = unstable.samplers.env_samplers.UniformRandomEnvSampler(
+    train_env_specs=[
+        unstable.TrainEnvSpec(env_id="Codenames-v0-train", num_players=4, num_actors=4, prompt_template="llama-instruct-zs"),
+        unstable.TrainEnvSpec(env_id="ColonelBlotto-v0-train", num_players=2, num_actors=2, prompt_template="llama-instruct-zs"),
+        unstable.TrainEnvSpec(env_id="ThreePlayerIPD-v0-train", num_players=3, num_actors=3, prompt_template="llama-instruct-zs"),
+    ],
+    eval_env_specs=[
+        unstable.EvalEnvSpec(env_id="Codenames-v0-train", num_players=4, prompt_template="llama-instruct-zs"),
+        unstable.EvalEnvSpec(env_id="ColonelBlotto-v0-train", num_players=2, prompt_template="llama-instruct-zs"),
+        unstable.EvalEnvSpec(env_id="ThreePlayerIPD-v0-train", num_players=3, prompt_template="llama-instruct-zs"),
+])
+```
+
+The __TrainEnvSpec__ expects the **env_id** (same as in TextArena), the **num_players** of the environment, the **num_actors** we want to use to collect data (i.e. if num_players==num_actors we will use mirror self-play with no opponent sampling) and the **prompt_template** used to process the observations.
+
+
 
