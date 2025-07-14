@@ -1,5 +1,5 @@
 # ---------- Site basics ----------
-title:          ""                   # site-wide <title>; empty = use page titles
+title:          ""             # site-wide <title>; was empty before
 theme:          jekyll-theme-minimal # built-in, zero-setup
 future:         true                 # render future-dated posts
 

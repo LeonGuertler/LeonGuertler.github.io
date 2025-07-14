@@ -57,3 +57,16 @@ code {
 .copy-btn:hover {
   background-color: #555;
 }
+
+
+pre table {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+pre td {
+  padding: 0.5em;
+  border: 1px solid #333;
+}

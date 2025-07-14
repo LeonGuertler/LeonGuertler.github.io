@@ -1,19 +1,44 @@
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('pre').forEach(function(pre) {
-      if (pre.querySelector('code')) {
-        var button = document.createElement('button');
-        button.className = 'copy-btn';
-        button.textContent = 'Copy';
-        button.onclick = function() {
-          var code = pre.querySelector('code').innerText;
-          navigator.clipboard.writeText(code).then(function() {
-            button.textContent = 'Copied!';
-            setTimeout(function() { button.textContent = 'Copy'; }, 2000);
-          });
-        };
-        pre.appendChild(button);
-      }
-    });
-  });
-</script>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>{{ page.title | default: site.title }}</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="stylesheet" href="{{ "/assets/css/style.css" | relative_url }}">
+  </head>
+
+  <body>
+    <header>
+      <h1 style="margin:1.5rem 0;">
+        <a href="{{ "/" | relative_url }}"
+           style="text-decoration:none;color:inherit;">
+          {{ site.title }}
+        </a>
+      </h1>
+    </header>
+
+    <main>
+      {{ content }}
+    </main>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('pre').forEach(function(pre) {
+          if (pre.querySelector('code')) {
+            var button = document.createElement('button');
+            button.className = 'copy-btn';
+            button.textContent = 'Copy';
+            button.onclick = function() {
+              var code = pre.querySelector('code').innerText;
+              navigator.clipboard.writeText(code).then(function() {
+                button.textContent = 'Copied!';
+                setTimeout(function() { button.textContent = 'Copy'; }, 2000);
+              });
+            };
+            pre.appendChild(button);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
