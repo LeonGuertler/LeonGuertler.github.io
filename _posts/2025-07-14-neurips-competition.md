@@ -2,6 +2,7 @@
 layout: post
 title:  "MindGames (NeurIPS 2025 Competition)"
 date:   2025-07-14
+author: Leon Guertler & Bobby Cheng
 ---
 
 **MindGames** is a a NeurIPS25 competition for text-based games that Bobby and I helped organize. Since we are obviously not allowed to participated, we wanted to write this short blog explaining how we would use UnstableBaselines (TODO link to it), to train a model an submit it to the competition (optimally giving you a small edge over your competition).
@@ -16,6 +17,10 @@ As for the training script, since 8b is rather big, we will use UnstableBaseline
 
 You can install UnstableBaselines via ```pip install unstable-rl``` (this will also install TextArena).
 
+
+ 
+
+## Imports
 Now we can set up the training script. I will first explain the components one by one, and then post the full script at the bottom.
 
 First we need to import all relevant packages; specifically, **ray**, **unstable** (the package name for UnstableBaselines) and the reward transformations from UnstableBaselines.
@@ -24,7 +29,7 @@ import ray, unstable
 import unstable.reward_transformations as retra
 ```
 
-
+## Constants & Configs
 Now we can build initialize constants and build the two necessary configuration configs (namely, the lora_config, specifying the lora size and which layers to apply it to, and the vllm_config, specifying out generation hyperparameters):
 ```python
 MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
@@ -42,6 +47,7 @@ vllm_config = {
 }
 ```
 
+## Init Ray & Specify Environments
 With everything imported and specified, we can now initialize ray and start building the relevant modules from unstable.
 ```python
 ray.init(namespace="unstable") # the namespace is mostly important for the terminal_interface.py script (which loads the modules from the "unstable" namespace)
@@ -60,6 +66,9 @@ env_sampler = unstable.samplers.env_samplers.UniformRandomEnvSampler(
 ])
 ```
 
-The __TrainEnvSpec__ expects the **env_id** (same as in TextArena), the **num_players** of the environment, the **num_actors** we want to use to collect data (i.e. if num_players==num_actors we will use mirror self-play with no opponent sampling) and the **prompt_template** used to process the observations. The __EvalEnvSpec__ will use 
+The __TrainEnvSpec__ expects the **env_id** (same as in TextArena), the **num_players** of the environment, the **num_actors** we want to use to collect data (i.e. if num_players==num_actors we will use mirror self-play with no opponent sampling) and the **prompt_template** used to process the observations. The __EvalEnvSpec__ will use **fixed_opponent**=`google/gemini-2.0-flash-lite-001` as the default fixed opponent. Make sure to export your OpenRouter api key via `export OPENROUTER_API_KEY="YOUY_KEY"` before running the script.
+
+
+
 
 
