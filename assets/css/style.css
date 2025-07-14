@@ -69,3 +69,38 @@ code {
 
 
 .highlight, .highlight * { font-family: "Ubuntu Mono", monospace !important; }
+
+
+/* ---------- Code block wrapper ---------- */
+.code-wrapper {
+  position: relative;          /* copy button uses this as anchor */
+  margin: 1.25rem 0;           /* some breathing room */
+}
+
+/* real box around code: */
+.code-wrapper pre {
+  background: #262626;         /* dark theme bg */
+  border: 1px solid #434343;   /* thin frame */
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;            /* long lines scroll */
+}
+
+/* copy button now sits *outside* top-right, zero overlap */
+.code-wrapper .copy-btn {
+  position: absolute;
+  top: -2.2rem;                /* float above the box */
+  right: 0;
+  background: #434343;
+  color: #fff;
+  border: none;
+  padding: .4rem .8rem;
+  font-size: .75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.code-wrapper .copy-btn:hover {
+  background: #5a5a5a;
+}

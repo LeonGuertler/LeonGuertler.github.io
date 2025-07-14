@@ -22,23 +22,28 @@
     </main>
 
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('pre').forEach(function(pre) {
-          if (pre.querySelector('code')) {
-            var button = document.createElement('button');
-            button.className = 'copy-btn';
-            button.textContent = 'Copy';
-            button.onclick = function() {
-              var code = pre.querySelector('code').innerText;
-              navigator.clipboard.writeText(code).then(function() {
-                button.textContent = 'Copied!';
-                setTimeout(function() { button.textContent = 'Copy'; }, 2000);
-              });
-            };
-            pre.appendChild(button);
-          }
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('pre > code').forEach((code, i) => {
+          // Wrap the <pre><code>…</code></pre> in a div so we can position things nicely
+          const wrapper   = document.createElement('div');
+          wrapper.className = 'code-wrapper';
+          code.parentNode.parentNode.replaceWith(wrapper);
+          wrapper.appendChild(code.parentNode);   // put <pre> inside wrapper
+      
+          // Add the copy button *after* the <pre> so it’s outside the box
+          const btn = document.createElement('button');
+          btn.className = 'copy-btn';
+          btn.textContent = 'Copy';
+          btn.addEventListener('click', () => {
+            navigator.clipboard.writeText(code.innerText).then(() => {
+              btn.textContent = 'Copied!';
+              setTimeout(() => (btn.textContent = 'Copy'), 2000);
+            });
+          });
+          wrapper.appendChild(btn);
         });
       });
-    </script>
+      </script>
+      
   </body>
 </html>
