@@ -113,7 +113,7 @@ We will add the base model (i.e. lora_path = None) to the model registry as well
 
 ## ModelSampler & GameScheduler
 Finally we can initialize our **ModelSampler** (since we are doing mirror self-play we will only use the base sampler here (i.e. where the __sample_opponent__ function is not implemented), using different opponent sampling methods to boost performance is a great starting off point) and **GameScheduler**. The **GameScheduler** is responsible for scheduling environments and models. In this example we will just randomly pick an environment for each game and don't need to sample opponents (since we are doing mirror self-player); but this is something worth playing with to boost performance.
-```python3
+```python
 model_sampler = unstable.samplers.model_samplers.BaseModelSampler(
     model_registry=model_registry
 ) 
@@ -150,7 +150,7 @@ The **max_buffer_size** specifies how many **Steps** at most will be held in the
 
 ## Collector
 Bringing it all together, we build the **Collector** which is responsible for running a fixed number of games in parallel, and pushing thinished episodes to the **StepBuffer**:
-```python3
+```python
 collector = unstable.Collector.options(name="Collector").remote(
     vllm_config=vllm_config, 
     tracker=tracker, 
@@ -214,14 +214,41 @@ ray.init(namespace="unstable") # the namespace is mostly important for the termi
 # initialize environment scheduler
 env_sampler = unstable.samplers.env_samplers.UniformRandomEnvSampler(
     train_env_specs=[
-        unstable.TrainEnvSpec(env_id="Codenames-v0-train", num_players=4, num_actors=4, prompt_template="llama-instruct-zs"),
-        unstable.TrainEnvSpec(env_id="ColonelBlotto-v0-train", num_players=2, num_actors=2, prompt_template="llama-instruct-zs"),
-        unstable.TrainEnvSpec(env_id="ThreePlayerIPD-v0-train", num_players=3, num_actors=3, prompt_template="llama-instruct-zs"),
+        unstable.TrainEnvSpec(
+            env_id="Codenames-v0-train", 
+            num_players=4, 
+            num_actors=4, 
+            prompt_template="llama-instruct-zs"
+        ),
+        unstable.TrainEnvSpec(
+            env_id="ColonelBlotto-v0-train", 
+            num_players=2, 
+            num_actors=2, 
+            prompt_template="llama-instruct-zs"
+        ),
+        unstable.TrainEnvSpec(
+            env_id="ThreePlayerIPD-v0-train", 
+            num_players=3, 
+            num_actors=3, 
+            prompt_template="llama-instruct-zs"
+        ),
     ],
     eval_env_specs=[
-        unstable.EvalEnvSpec(env_id="Codenames-v0-train", num_players=4, prompt_template="llama-instruct-zs"),
-        unstable.EvalEnvSpec(env_id="ColonelBlotto-v0-train", num_players=2, prompt_template="llama-instruct-zs"),
-        unstable.EvalEnvSpec(env_id="ThreePlayerIPD-v0-train", num_players=3, prompt_template="llama-instruct-zs"),
+        unstable.EvalEnvSpec(
+            env_id="Codenames-v0-train", 
+            num_players=4, 
+            prompt_template="llama-instruct-zs"
+        ),
+        unstable.EvalEnvSpec(
+            env_id="ColonelBlotto-v0-train", 
+            num_players=2, 
+            prompt_template="llama-instruct-zs"
+        ),
+        unstable.EvalEnvSpec(
+            env_id="ThreePlayerIPD-v0-train", 
+            num_players=3, 
+            prompt_template="llama-instruct-zs"
+        ),
 ])
 
 
@@ -286,8 +313,11 @@ ray.get(learner.initialize_algorithm.remote(
 ))
 
 try:
-    collector.collect.remote(num_train_workers=COLLECTION_WORKERS, num_eval_workers=EVALUATION_WORKERS)
-    ray.get(learner.train.remote(ITERATIONS))
+    collector.collect.remote(
+        num_train_workers=512, 
+        num_eval_workers=16
+    ) # if you are running out of ram, reduce this
+    ray.get(learner.train.remote(200))
 finally:
     ray.kill(collector, no_restart=True)
     ray.shutdown()
@@ -297,11 +327,15 @@ finally:
 I put the code into a script called **mind_games_demo.py**, so will run it via `python3 mind_games_demo.py`.
 You can now open a new terminal on the same machine and track your training run via `unstable-terminal`.
 
-TODO - this is what it should look like during training.
 
+
+
+
+TODO - this is what it should look like during training.
 
 TODO - this is what the wandb looks like
 
+TODO - offline evaluation
 
 TODO - this is how you can load your checkpoint and evaluate it on textarena
 
