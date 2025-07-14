@@ -3,3 +3,12 @@ plugins: ["jekyll-include-cache"]   # built-in on Pages
 title:  ""
 theme:  jekyll-theme-minimal     # built-in, zero setup
 future: true          # ← add this line
+
+markdown: kramdown
+highlighter: rouge
+
+kramdown:
+  input: GFM              # GitHub-flavoured markdown (fenced code, tables…)
+  syntax_highlighter_opts:
+    span:
+      line_numbers: false

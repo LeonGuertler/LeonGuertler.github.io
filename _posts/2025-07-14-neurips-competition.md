@@ -26,7 +26,7 @@ import unstable.reward_transformations as retra
 
 
 Now we can build initialize constants and build the two necessary configuration configs (namely, the lora_config, specifying the lora size and which layers to apply it to, and the vllm_config, specifying out generation hyperparameters):
-```python3
+```python
 MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
 MAX_GENERATION_LENGTH = 4096
 MAX_TRAIN_SEQ_LEN = None # if you are running out of vRam, you can decrease this.
@@ -43,7 +43,7 @@ vllm_config = {
 ```
 
 With everything imported and specified, we can now initialize ray and start building the relevant modules from unstable.
-```python3
+```python
 ray.init(namespace="unstable") # the namespace is mostly important for the terminal_interface.py script (which loads the modules from the "unstable" namespace)
 
 # initialize environment scheduler
