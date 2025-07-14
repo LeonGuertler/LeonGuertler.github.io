@@ -66,3 +66,6 @@ code {
 .copy-btn:hover {
   background-color: #555;
 }
+
+
+.highlight, .highlight * { font-family: "Ubuntu Mono", monospace !important; }
