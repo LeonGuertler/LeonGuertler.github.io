@@ -3,8 +3,8 @@
 
 html, body {
   font-family: "Ubuntu Mono", monospace;
-  background-color: #121212; /* Dark bg */
-  color: #e0e0e0; /* Light text */
+  background-color: #3a3333; /* Dark bg */
+  color: #c5bfbf; /* Light text */
   margin: 0;
   padding: 1em;
 }
