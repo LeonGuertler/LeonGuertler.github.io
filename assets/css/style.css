@@ -24,7 +24,7 @@ header, main {
 
 pre, code {
   font-family: "Ubuntu Mono", monospace;
-  background-color: transparent; /* No background */
+  /*background-color: transparent; /* No background */
   color: #e0e0e0;
 }
 
