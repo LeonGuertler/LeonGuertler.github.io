@@ -1,17 +1,19 @@
 ---
 layout: post
 title:  "MindGames (NeurIPS 2025 Competition)"
-date:   2025-07-14
+date:   2025-07-18
 author: Leon Guertler & Bobby Cheng
 ---
 
-**MindGames** is a a NeurIPS25 competition for text-based games that Bobby and I helped organize. Since we are obviously not allowed to participated, we wanted to write this short blog explaining how we would use UnstableBaselines (TODO link to it), to train a model an submit it to the competition (optimally giving you a small edge over your competition).
+**MindGames** is a a NeurIPS25 competition for text-based games that Bobby and I helped organize. Since we are obviously not allowed to participated, we wanted to write this short blog explaining how we would use [UnstableBaselines](https://github.com/LeonGuertler/UnstableBaselines), to train a model an submit it to the competition (optimally giving you a small edge over your competition).
 
 MindGames has two main trackes focused on TheoryOfMindGames (one for 'Secretmafia-v0' and one for `Codenames-v0`, `ColonelBlotto-v0` and `ThreePlayerIPD-v0`). In our experience, the biggest challange is training small (i.e. <8B) models on games where the action output is part of the next players observation. In this blog we will focus on track two, since `ThreePlayerIPD-v0` is the only such environment in it.
 
 Since we have also been training on these games for a couple of months, we created version of them where the observations are structured in a training-friendly manner (you can just use the suffic `-train`; i.e. `Codenames-v0` -> `Codenames-v0-train`). This will work both for offline training and your online submission.
 
-First things first, we need to decide on a model and build the training script. In Spiral (TODO link to paper) we used the __Qwen3-4B-Base__ model so we can show the OOD math improvement of self-play. However, in this context that won't be necessary, and since the parameter limit is 8B, we will use the __Qwen3-8B__ model (i.e. instruction tuned).
+First things first, we need to decide on a model and build the training script. In Spiral (TODO link to paper) we used the __Qwen3-4B-Base__ model so we can show the OOD math improvement of self-play. Since this worked very well, here we will use the slightly larger __Qwen3-8B-Base__.
+
+However, in this context that won't be necessary, and since the parameter limit is 8B, we will use the __Qwen3-8B-Base__ model (i.e. instruction tuned).
 
 As for the training script, since 8b is rather big, we will use UnstableBaselines, which uses LoRA and activation checkpointing, thus 48GB of vRam should be enough (for this blog we will use our 3x RTX6000 ada machine; if you only have access to 24gb of vRam you will likely have to go with the 4B version).
 
@@ -325,21 +327,82 @@ finally:
 
 
 I put the code into a script called **mind_games_demo.py**, so will run it via `python3 mind_games_demo.py`.
-You can now open a new terminal on the same machine and track your training run via `unstable-terminal`.
+You can now open a new terminal on the same machine and track your training run via `unstable-terminal`, which will look something like this:
+
+![](https://github.com/LeonGuertler/LeonGuertler.github.io/blob/main/docs/unstable-terminal.gif)
 
 
 
+We can also track the results via Weights & Biases:
 
-
+TODO - include performance pics: https://wandb.ai/stlm/UnstableBaselines/runs/j65jpoy8
 TODO - this is what it should look like during training.
-
 TODO - this is what the wandb looks like
 
-TODO - offline evaluation
 
+
+## Offline Evaluation
+Before evaluating the model online, let's run some preliminarly offline evals. To make this more challenging we will evaluate our trained model against the strongest (presumably <8B) model I could think of: `openai/gpt-4.1-nano`.
+
+We will use the standard TextArena offline eval script:
+
+```python
+TODO - include the lora loading
+```
+TODO - offline evaluation
 TODO - this is how you can load your checkpoint and evaluate it on textarena
+
+
+
+
+
+## Online Evaluation
+Given the mostly strong offline eval results we achieved with the checkpoint, we can now move on to evaluating the model on TextArena. To that end, we need the following information:
+1. Our Model name - you need to come up with this and it has to be unique
+2. Our Model description - optimally informative, but up to you haha
+3. Our Team hash - when you register your team for the competition ([here](https://www.mindgamesarena.com/timeline)) you should receive it within 24h via email.
+
+Here is a short script for loading our trained model and playing a single game online:
+```python
+import textarena as ta
+ 
+MODEL_NAME = "YOUR_MODEL_NAME"
+MODEL_DESCRIPTION = "YOUR_MODEL_DESCRIPTION"
+team_hash = "MG25-YOUR_TEAM_HASH" 
+
+
+# Initialize agent
+agent = ta.agents.OpenRouterAgent(model_name="gpt-4o") 
+
+env = ta.make_mgc_online(
+    track="Generalization",  # specify your track here. 
+    model_name=MODEL_NAME,
+    model_description=MODEL_DESCRIPTION,
+    team_hash=team_hash,
+    agent=agent, # the model object is passed to make sure the same model is used. If you submit multiple models, please change the name!!!
+    small_category=True # <=8B parameters
+)
+env.reset(num_players=1) # always set to 1 when playing online, even when playing multiplayer games.
+
+done = False
+while not done:
+    player_id, observation = env.get_observation()
+    action = agent(observation)
+    done, step_info = env.step(action=action)
+
+rewards, game_info = env.close()
+print(f"Rewards: {rewards}")
+print(f"Game-Info: {game_info})
+
+```
+Running the above will look a little like this:
+TODO
 
 
 TODO - here are the final results
 
 
+
+
+## Questions
+If you have any questions at all about the code, TextArena, UnstableBaselines or the competition, please message us on the competition [Discord](https://discord.gg/4Hzpxa7z)
