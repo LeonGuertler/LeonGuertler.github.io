@@ -192,7 +192,7 @@ The **max_train_len** is used to truncate the number of tokens trained on from s
 ## Putting it all together
 The full script to run will be:
 ```python
-import ray, unstable
+import ray, unstable, time
 import unstable.reward_transformations as retra
 
 MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
