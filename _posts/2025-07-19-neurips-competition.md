@@ -5,27 +5,25 @@ date:   2025-07-19
 author: Leon Guertler & Bobby Cheng
 ---
 
-**MindGames** is a a NeurIPS25 competition for text-based games that Bobby and I helped organize. Since we are obviously not allowed to participated, we wanted to write this short blog explaining how we would use [UnstableBaselines](https://github.com/LeonGuertler/UnstableBaselines), to train a model an submit it to the competition (optimally giving you a small edge over your competition).
+**MindGames** is a a NeurIPS25 competition for text-based games that Bobby and I helped organize. Since we are obviously not allowed to participated, we wanted to write this short blog explaining how we would use [UnstableBaselines](https://github.com/LeonGuertler/UnstableBaselines), to train and submit a model to the competition (optimally giving you a small edge over your competition).
 
-MindGames has two main trackes focused on TheoryOfMindGames (one for 'Secretmafia-v0' and one for `Codenames-v0`, `ColonelBlotto-v0` and `ThreePlayerIPD-v0`). In our experience, the biggest challange is training small (i.e. <8B) models on games where the action output is part of the next players observation. In this blog we will focus on track two, since `ThreePlayerIPD-v0` is the only such environment in it.
+MindGames has two main trackes focused on Theory of Mind (ToM) (one for `Secretmafia-v0` and one for `Codenames-v0`, `ColonelBlotto-v0` and `ThreePlayerIPD-v0`). In our experience, the biggest challange is training small (i.e. <8B) models on games with natural language action space (i.e. very conversational games), since the full actions will be part of the next players osbervation. Thus, in this mini-blog we will focus on track two, since `ThreePlayerIPD-v0` is the only such environment in it.
 
-Since we have also been training on these games for a couple of months, we created version of them where the observations are structured in a training-friendly manner (you can just use the suffic `-train`; i.e. `Codenames-v0` -> `Codenames-v0-train`). This will work both for offline training and your online submission.
+Since we have also been training on these games for a couple of months, we created versions of them where the observations are structured in a training-friendly manner (you can access them by using the suffic `-train`; i.e. `Codenames-v0` -> `Codenames-v0-train`). This will work both for offline training and your online submission. Note that this won't change the environment itself, but rather how the observations are structured and presented to the model.
 
-First things first, we need to decide on a model and build the training script. In Spiral (TODO link to paper) we used the __Qwen3-4B-Base__ model so we can show the OOD math improvement of self-play. Since this worked very well, here we will use the slightly larger __Qwen3-8B-Base__.
+First things first, we need to decide on a model and build the training script. In [Spiral](https://arxiv.org/abs/2506.24119) we used the __Qwen3-4B-Base__, which worked very well; since the size limit for the small model track in this competition is **8B**, here we will use the slightly larger __Qwen3-8B-Base__.
 
-However, in this context that won't be necessary, and since the parameter limit is 8B, we will use the __Qwen3-8B-Base__ model (i.e. instruction tuned).
+As for the training script, since 8B is rather big, we will use [UnstableBaselines](https://github.com/LeonGuertler/UnstableBaselines), which uses LoRA and activation checkpointing, thus 48GB of vRam should be enough (for this blog we will use our 3x RTX6000 ada machine; if you only have access to 24gb of vRam you will likely have to go with the 4B version of the model).
 
-As for the training script, since 8b is rather big, we will use UnstableBaselines, which uses LoRA and activation checkpointing, thus 48GB of vRam should be enough (for this blog we will use our 3x RTX6000 ada machine; if you only have access to 24gb of vRam you will likely have to go with the 4B version).
-
-You can install UnstableBaselines via ```pip install unstable-rl``` (this will also install TextArena).
+You can install UnstableBaselines via ```pip install unstable-rl``` (this will also install TextArena and anything else you need).
 
 
  
 
 ## Imports
-Now we can set up the training script. I will first explain the components one by one, and then post the full script at the bottom.
+Now we can set up the training script. I will first explain the components one by one, and then show the full script at the bottom.
 
-First we need to import all relevant packages; specifically, **ray**, **unstable** (the package name for UnstableBaselines) and the reward transformations from UnstableBaselines.
+First we need to import all relevant packages; specifically, **time**, **ray**, **unstable** (the package name for UnstableBaselines) and the reward transformations from UnstableBaselines.
 
 ```python
 
@@ -34,11 +32,12 @@ import unstable.reward_transformations as retra
 ```
 
 ## Constants & Configs
-Now we can build initialize constants and build the two necessary configuration configs (namely, the lora_config, specifying the lora size and which layers to apply it to, and the vllm_config, specifying out generation hyperparameters):
+Now we can initialize constants and build the two necessary configuration configs (namely, the lora_config, specifying the lora size and which layers to apply it to, and the vllm_config, specifying our generation hyperparameters):
 ```python
-MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
+
+MODEL_NAME = "qwen/Qwen3-8B-Base"
 MAX_GENERATION_LENGTH = 4096
-MAX_TRAIN_SEQ_LEN = None # if you are running out of vRam, you can decrease this.
+MAX_TRAIN_SEQ_LEN = 3000 # if you are running out of vRam, you can decrease this.
 
 lora_config = {
     "lora_rank": 32, "lora_alpha": 32, "lora_dropout": 0.0,
@@ -54,7 +53,8 @@ vllm_config = {
 ## Init Ray & Specify Environments
 With everything imported and specified, we can now initialize ray and start building the relevant modules from unstable.
 ```python
-ray.init(namespace="unstable") # the namespace is mostly important for the terminal_interface.py script (which loads the modules from the "unstable" namespace)
+
+ray.init(namespace="unstable") 
 
 # initialize environment scheduler
 env_sampler = unstable.samplers.env_samplers.UniformRandomEnvSampler(
@@ -63,45 +63,46 @@ env_sampler = unstable.samplers.env_samplers.UniformRandomEnvSampler(
             env_id="Codenames-v0-train", 
             num_players=4, 
             num_actors=4, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
         unstable.TrainEnvSpec(
             env_id="ColonelBlotto-v0-train", 
             num_players=2, 
             num_actors=2, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
         unstable.TrainEnvSpec(
             env_id="ThreePlayerIPD-v0-train", 
             num_players=3, 
             num_actors=3, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
     ],
     eval_env_specs=[
         unstable.EvalEnvSpec(
             env_id="Codenames-v0-train", 
             num_players=4, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
         unstable.EvalEnvSpec(
             env_id="ColonelBlotto-v0-train", 
             num_players=2, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
         unstable.EvalEnvSpec(
             env_id="ThreePlayerIPD-v0-train", 
             num_players=3, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
 ])
 ```
 
-The __TrainEnvSpec__ expects the **env_id** (same as in TextArena), the **num_players** of the environment, the **num_actors** we want to use to collect data (i.e. if num_players==num_actors we will use mirror self-play with no opponent sampling) and the **prompt_template** used to process the observations. The __EvalEnvSpec__ will use **fixed_opponent**=`google/gemini-2.0-flash-lite-001` as the default fixed opponent. Make sure to export your OpenRouter api key via `export OPENROUTER_API_KEY="YOUY_KEY"` before running the script.
+The __TrainEnvSpec__ expects the **env_id** (same as in TextArena), the **num_players** of the environment, the **num_actors** we want to use to collect data (i.e. if num_players==num_actors we will use mirror self-play with no opponent sampling) and the **prompt_template** used to process the observations. The __EvalEnvSpec__ will use **fixed_opponent**=`google/gemini-2.0-flash-lite-001` as the default fixed opponent. Make sure to export your OpenRouter api key via `export OPENROUTER_API_KEY="YOUR_KEY"` before running the script.
 
 ## Tracker & Model Registry
 Next up we will build the **Tracker** and **ModelRegistry**. The former is responsible for WandB logging as well as local path handling. The latter will keep track of all checkpoints and fixed opponents for model sampling.
 ```python
+
 tracker = unstable.Tracker.options(name="Tracker").remote(
     run_name=f"Test-{MODEL_NAME.split('/')[-1]}-{env_sampler.env_list()}-{int(time.time())}", 
     wandb_project="UnstableBaselines"
@@ -109,13 +110,13 @@ tracker = unstable.Tracker.options(name="Tracker").remote(
 
 model_registry = unstable.ModelRegistry.options(name="ModelRegistry").remote(tracker=tracker)
 ray.get(model_registry.add_checkpoint.remote(uid="base", path=None, iteration=0))
-ray.get(model_registry.add_fixed.remote(name="google/gemini-2.0-flash-lite-001"))
 ```
 We will add the base model (i.e. lora_path = None) to the model registry as well.
 
 ## ModelSampler & GameScheduler
-Finally we can initialize our **ModelSampler** (since we are doing mirror self-play we will only use the base sampler here (i.e. where the __sample_opponent__ function is not implemented), using different opponent sampling methods to boost performance is a great starting off point) and **GameScheduler**. The **GameScheduler** is responsible for scheduling environments and models. In this example we will just randomly pick an environment for each game and don't need to sample opponents (since we are doing mirror self-player); but this is something worth playing with to boost performance.
+Finally we can initialize our **ModelSampler** (since we are doing mirror self-play we will only use the base sampler here (i.e. where the __sample_opponent__ function is not implemented), using different opponent sampling methods to boost performance is a great starting off point btw) and **GameScheduler**. The **GameScheduler** is responsible for scheduling environments and models. In this example we will just randomly pick an environment for each game and don't need to sample opponents (since we are doing mirror self-player); but this is something worth playing with to boost performance.
 ```python
+
 model_sampler = unstable.samplers.model_samplers.BaseModelSampler(
     model_registry=model_registry
 ) 
@@ -130,6 +131,7 @@ game_scheduler = unstable.GameScheduler.options(name="GameScheduler").remote(
 ## StepBuffer
 In this code example we will use **REINFORCE** as the learning algorithm. Thus it is enough to keep track of individual __Steps__ (i.e. obs, action, reward triplets). However, if you want to use **A2C**, for example, you'll need to switch to the **TrajectoryBuffer**.
 ```python
+
 step_buffer = unstable.StepBuffer.options(name="Buffer").remote(
     max_buffer_size=768, 
     tracker=tracker,
@@ -148,11 +150,12 @@ step_buffer = unstable.StepBuffer.options(name="Buffer").remote(
 The **max_buffer_size** specifies how many **Steps** at most will be held in the buffer. If we exceed this amount, the default sub-sampling strategy is to randomly delete old **Steps**. Additionally we are passing the **Tracker** object and specify the different reward transformations:
 1. **FinalRewardTransforms** Will be applied first and is responsible for any transformation on the environment rewards. In this case we wil track the __ema__ role-based reward and subtract it from the final reward. This is very important for games that have strong role biases (i.e. TicTacToe).
 2. **StepRewardTransforms** When the trajectory is split into individual steps, these transformations are applied. In this case we will reward the correct format (i.e. \boxed{}) and valid moves.
-3. **SamplingRewardTransforms** Laslty, when pulling the next batch for training, the sampling rewards are applied. In this case just a standard normal transformation.
+3. **SamplingRewardTransforms** Lastly, when pulling the next batch for training, the sampling rewards are applied. In this case just a standard normal transformation.
 
 ## Collector
-Bringing it all together, we build the **Collector** which is responsible for running a fixed number of games in parallel, and pushing thinished episodes to the **StepBuffer**:
+Bringing it all together, we build the **Collector** which is responsible for running a fixed number of games in parallel, and pushing fhinished episodes to the **StepBuffer**:
 ```python
+
 collector = unstable.Collector.options(name="Collector").remote(
     vllm_config=vllm_config, 
     tracker=tracker, 
@@ -164,6 +167,7 @@ collector = unstable.Collector.options(name="Collector").remote(
 ## Learner
 As previously mentioned, in this example we will use the **REINFORCE** algorithm as our learner.
 ```python
+
 learner = unstable.REINFORCELearner.options(num_gpus=1, name="Learner").remote(
     model_name=MODEL_NAME,
     lora_cfg=lora_config,
@@ -194,12 +198,13 @@ The **max_train_len** is used to truncate the number of tokens trained on from s
 ## Putting it all together
 The full script to run will be:
 ```python
+
 import ray, unstable, time
 import unstable.reward_transformations as retra
 
-MODEL_NAME = "meta-llama/Llama-3.2-3B-Instruct"
+MODEL_NAME = "qwen/Qwen3-8B-Base"
 MAX_GENERATION_LENGTH = 4096
-MAX_TRAIN_SEQ_LEN = None # if you are running out of vRam, you can decrease this.
+MAX_TRAIN_SEQ_LEN = 3000 # if you are running out of vRam, you can decrease this.
 
 lora_config = {
     "lora_rank": 32, "lora_alpha": 32, "lora_dropout": 0.0,
@@ -220,36 +225,36 @@ env_sampler = unstable.samplers.env_samplers.UniformRandomEnvSampler(
             env_id="Codenames-v0-train", 
             num_players=4, 
             num_actors=4, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
         unstable.TrainEnvSpec(
             env_id="ColonelBlotto-v0-train", 
             num_players=2, 
             num_actors=2, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
         unstable.TrainEnvSpec(
             env_id="ThreePlayerIPD-v0-train", 
             num_players=3, 
             num_actors=3, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
     ],
     eval_env_specs=[
         unstable.EvalEnvSpec(
             env_id="Codenames-v0-train", 
             num_players=4, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
         unstable.EvalEnvSpec(
             env_id="ColonelBlotto-v0-train", 
             num_players=2, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
         unstable.EvalEnvSpec(
             env_id="ThreePlayerIPD-v0-train", 
             num_players=3, 
-            prompt_template="llama-instruct-zs"
+            prompt_template="qwen3-zs"
         ),
 ])
 
@@ -261,7 +266,6 @@ tracker = unstable.Tracker.options(name="Tracker").remote(
 
 model_registry = unstable.ModelRegistry.options(name="ModelRegistry").remote(tracker=tracker)
 ray.get(model_registry.add_checkpoint.remote(uid="base", path=None, iteration=0))
-ray.get(model_registry.add_fixed.remote(name="google/gemini-2.0-flash-lite-001"))
 
 model_sampler = unstable.samplers.model_samplers.BaseModelSampler(
     model_registry=model_registry
@@ -318,7 +322,7 @@ try:
     collector.collect.remote(
         num_train_workers=512, 
         num_eval_workers=16
-    ) # if you are running out of ram, reduce this
+    ) # if you are running out of ram, you can reduce this
     ray.get(learner.train.remote(200))
 finally:
     ray.kill(collector, no_restart=True)
@@ -337,11 +341,11 @@ We can also track the results via Weights & Biases. Keep in mind that the eval p
 
 
 ### Training perf.
-Tbh, all of these are proxies, but when try to read the w&b tealeafs for self-play runs, I usually first check the game length and invalid move rates. Those will be good proxies for the model learning how to play the game (although you need to keep the environment design in mind, more on that in a bit):
+Tbh, all of these are proxies, but when I try to read the w&b tealeafs for self-play runs, I usually first check the game length and invalid move rates. Those will be good proxies for the model learning how to play the game (although you need to keep the environment design in mind, more on that in a bit):
 
 ![WnB Game Length](/docs/game_length.png){: width="100%" }
 
-As you can see, the game length (and change thereof) differs significantly for the different envs. ThreePlayerIPD does not really have invalid moves (which actually makes training a bit harder), so the runs always last 30 turns. Codenames does have invalid moves (the turn will be skipped) and you can see the models initially learning to descibe words well enough that the game length goes down to 12 or so turns, before coming back up (without looking at the games it is hard to say why this is happening). ColonelBlotto, the easiest out of the three games looks great. Game length is stably increasingly as expected (since here invalid moves will actually end the game). Again, I do want to highlight, this is essentially tealeaf reading, AI is alchemy, not a science and at best you can build your intuition for how to interpret these things.
+As you can see, the game length (and change thereof) differs significantly for the different envs. ThreePlayerIPD does not really have invalid moves (which actually makes training a bit harder), so the runs always last 30 turns. Codenames does have invalid moves (the turn will be skipped) and you can see the models initially learning to descibe words well enough that the game length goes down to 12 or so turns, before coming back up (without looking at the games it is hard to say why this is happening). ColonelBlotto, the easiest out of the three games looks great. Game length is stably increasing as expected (since here invalid moves will actually end the game). Again, I do want to highlight, this is essentially tealeaf reading, AI is alchemy, not a science and at best you can build your intuition for how to interpret these things, there is not 100% correct answer.
 
 ![Invalid Move Rate](/docs/inv_move_rate.png){: width="100%" }
 
@@ -350,12 +354,12 @@ Another good proxy (depending on the environment) is the invalid move rate of th
 
 
 ### Evaluation perf.
-Given that the training performance mostly looks good, we can now move on to checkinig the eval games we ran during training. Here we will simply check the win-rate against our fixed opponent:
+Given that the training performance mostly looks good, we can now move on to checking the eval games we ran during training. Here we will simply check the win-rate against our fixed opponent:
 
 
 ![Eval Win Rate](/docs/win_rate.png){: width="100%" }
 
-There are certainly significant win-rate gains during training, although Codenames seems to diverge from it's 45% peak dowards the end of training. ColonelBlotto looks pretty much textbook and how we would expect it to. These results indicate that the model certainly learned something and managed to more than double it's eval performance.
+There are certainly significant win-rate gains during training, although Codenames seems to diverge from it's 45% peak towards the end of training. ColonelBlotto looks pretty much textbook and how we would expect it to. These results indicate that the model certainly learned something and managed to more than double it's eval performance on most envs.
 
 Now we can move to evaluating this checkpoint offline against a stronger <8B model, and subsequently online.
 
@@ -503,10 +507,14 @@ from tqdm import tqdm
 import textarena as ta
 
 # local import
-from model_class import UnstableAgent
+from model_class import UnstableAgent # from the script we just wrote
 
 NUM_EPISODES = 16
-EVAL_ENV_IDS = [("Codenames-v0-train", 4), ("ColonelBlotto-v0-train", 2), ("ThreePlayerIPD-v0-train", 3)]  # (env-id, num_players)
+EVAL_ENV_IDS = [
+    ("Codenames-v0-train", 4), 
+    ("ColonelBlotto-v0-train", 2), 
+    ("ThreePlayerIPD-v0-train", 3)
+]  # (env-id, num_players)
 OPPONENT_NAME = "openai/gpt-4.1-nano"
 FILE_NAME = "eval_summary.csv"
 
@@ -613,7 +621,7 @@ df.to_csv(f"eval_results/{FILE_NAME}", index=False)
 print(f"\nSaved -> eval_results/{FILE_NAME}")
 ```
 
-This is a minimally edited version of the `offline_eval.py` script we provide in textarena. Running this will take a while (depending on how many games and which opponent you select it can take 2+h; would be much faster if you run it in parallel, but we haven't added that yet) and will both pretty-print and store the final results.
+This is a minimally edited version of the `offline_eval.py` script we provide in textarena. Running this will take a while (depending on how many games and which opponent you select it can take 2h or so; would be much faster if you run it in parallel, but we haven't added that yet) and will both pretty-print and store the final results.
 
 ```
 === Evaluation Summary ===
@@ -624,28 +632,30 @@ This is a minimally edited version of the `offline_eval.py` script we provide in
 | ThreePlayerIPD-v0-train |      0.812 |       0.062 |       0.125 |          0.000 |      10.000 |              0.750 |                -0.438 |
 ```
 
-The results looks pretty good, especially for `ThreePlayerIPD-v0`. It's a bit hard to say if they are amazing or not, but as you train and eval multiple models, this will be a great proxy for online eval performance! Anyway, good enough for now, let's move on to the online eval part.
+The results looks pretty good, especially for `ThreePlayerIPD-v0`. It's a bit hard to say if they are amazing or not, but as you train and eval multiple models (and thus get a point of reference), this will be a great proxy for online eval performance! Anyway, good enough for now, let's move on to the online eval part.
 
 
 
 
 ## Online Evaluation
 To run your models in the online leaderboard you'll need three things:
-1. Our Model name - you need to come up with this and it has to be unique
-2. Our Model description - optimally informative, but up to you haha
-3. Our Team hash - when you register your team for the competition ([here](https://www.mindgamesarena.com/timeline)) you should receive it within 24h via email.
+1. You Model name - you need to come up with this and it has to be unique
+2. Your Model description - optimally informative, but up to you haha
+3. Your Team hash - when you register your team for the competition ([here](https://www.mindgamesarena.com/timeline)) you should receive it via email.
 
 Here is a short script for loading our trained model and playing a single game online:
 ```python
+
 import textarena as ta
- 
+from model_class import UnstableAgent
+
 MODEL_NAME = "YOUR_MODEL_NAME"
 MODEL_DESCRIPTION = "YOUR_MODEL_DESCRIPTION"
 team_hash = "MG25-YOUR_TEAM_HASH" 
 
 
 # Initialize agent
-agent = ta.agents.OpenRouterAgent(model_name="gpt-4o") 
+agent = UnstableAgent(hf_name="LeonGuertler/MindGamesDemoRun")
 
 env = ta.make_mgc_online(
     track="Generalization",  # specify your track here. 
@@ -664,13 +674,13 @@ while not done:
     done, step_info = env.step(action=action)
 
 rewards, game_info = env.close()
-print(f"Rewards: {rewards}")
-print(f"Game-Info: {game_info})
+
 
 ```
 Running the above will look a little like this:
 
 ```
+
 ✅ Registered 'LeonDemo' with deterministic token: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
 Environment                    | Wrappers
 ----------------------------------------------------------------------
@@ -689,6 +699,7 @@ By default the subset will use the `-train` version of each environment, but you
 
 Once a match is found, the terminal will print all observations and actions, so it relatively easy to track what your model is doing, ie.e.:
 ```
+
 [...]
 Received: {"command": "observation", "observation": [[0, "[A5 B10 C5]", 2], [-1, "\nRound 2\nCommander Alpha allocated: A: 5 , B: 10, C: 5 \nCommander Beta allocated:  A: 4 , B: 7 , C: 9 \nWinner: Commander Alpha", 4], [-1, "=== COLONEL BLOTTO - Round 3/9 ===\nRounds Won - Commander Alpha: 1, Commander Beta: 1\nAvailable fields: A, B, C\nUnits to allocate: 20\nFormat: '[A4 B2 C2]'.", 5]], "player_id": 0}
 Received observation for player 0
@@ -720,6 +731,7 @@ Received: {"command": "observation", "observation": [[0, "[A5 B5 C10]", 2], [-1,
 
 And once the game is done, you'll see your results:
 ```
+
 Received: {"command": "game_over", "outcome": "win", "reward": 1, "trueskill_change": 4.396, "new_trueskill": 29.396, "reason": "Commander Alpha wins 5-1 (majority achieved)!", "game_id": 54927, "opponents": "Humanity", "opponents_ts": "20.604", "opponents_with_ids": "1:Humanity"}
 Game over received
 Game over: win, reason: Commander Alpha wins 5-1 (majority achieved)!
@@ -732,7 +744,7 @@ Timeout after 21.4s while waiting for additional messages after game over
 WebSocket connection closed by server
 ```
 
-We will make this a bit prettier in the future, but the ghist is that our model won the game, gained **+4.396 TrueSkill**, has a new TrueSkill rating of **29.396**, and we actually won against a human player.
+We will make this a bit prettier in the future, but the gist is that our model won the game, gained **+4.396 TrueSkill**, has a new TrueSkill rating of **29.396**, and we actually won against a human player.
 
 Generally, if you are confident your code is running well and the model is performing, you can just run the above code in a loop to play a lot of games.
 
@@ -741,7 +753,14 @@ The online leaderboard is updated once an hour or so. Once updated, you should s
 ![WnB Game Length](/docs/leaderboard.png){: width="100%" }
 
 
+## What to improve
+If you are not sure how to further improve model performance, here are some ideas:
+1. Use a larger reasoning model to create an SFT dataset before doing RL
+2. Build different Opponent Sampling strategies where you include a mix of fixed opponents and previous checkpoints
+3. Include other games into the training run (this works suprisingly well and we will publish a paper on this soon)
+4. Try using a different base model (either different model family, or an instruct/reasoning model)
+5. Train the model for longer
 
 
 ## Questions
-If you have any questions at all about the code, TextArena, UnstableBaselines or the competition, please message us on the competition [Discord](https://discord.gg/4Hzpxa7z)
+If you have any questions at all about the code, TextArena, UnstableBaselines, the competition; or just want to chat about research/self-play please feel free to join the competition [Discord](https://discord.gg/4Hzpxa7z)! If you are too shy to text publicly, our DMs are also open!
