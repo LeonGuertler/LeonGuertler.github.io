@@ -115,3 +115,10 @@ code {
   width: 100%;
   height: auto;      /* keep aspect ratio */
 }
+
+.post-content img {
+  max-width: 100%;   /* never overflow column            */
+  height: auto;      /* keep aspect ratio                */
+  display: block;    /* makes the auto margins kick in   */
+  margin: 1.25rem auto;  /*  ⬅︎  auto left+right ⇒ centred  */
+}
