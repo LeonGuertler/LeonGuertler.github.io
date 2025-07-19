@@ -333,12 +333,157 @@ You can now open a new terminal on the same machine and track your training run 
 
 
 
-We can also track the results via Weights & Biases:
+We can also track the results via Weights & Biases. Keep in mind that the eval performance on W&B should be treated as a proxy for performance as it can be slightly lagging (depending on the hardware and game length). For the above run I got the following:
 
-TODO - include performance pics: https://wandb.ai/stlm/UnstableBaselines/runs/j65jpoy8
-TODO - this is what it should look like during training.
-TODO - this is what the wandb looks like
 
+### Training perf.
+Tbh, all of these are proxies, but when try to read the w&b tealeafs for self-play runs, I usually first check the game length and invalid move rates. Those will be good proxies for the model learning how to play the game (although you need to keep the environment design in mind, more on that in a bit):
+
+![WnB Game Length](/docs/game_length.png)
+
+As you can see, the game length (and change thereof) differs significantly for the different envs. ThreePlayerIPD does not really have invalid moves (which actually makes training a bit harder), so the runs always last 30 turns. Codenames does have invalid moves (the turn will be skipped) and you can see the models initially learning to descibe words well enough that the game length goes down to 12 or so turns, before coming back up (without looking at the games it is hard to say why this is happening). ColonelBlotto, the easiest out of the three games looks great. Game length is stably increasingly as expected (since here invalid moves will actually end the game). Again, I do want to highlight, this is essentially tealeaf reading, AI is alchemy, not a science and at best you can build your intuition for how to interpret these things.
+
+![Invalid Move Rate](/docs/inv_move_rate.png)
+
+
+Another good proxy (depending on the environment) is the invalid move rate of the model. As you can see, it's going down stably, which is a great sign.
+
+
+### Evaluation perf.
+Given that the training performance mostly looks good, we can now move on to checkinig the eval games we ran during training. Here we will simply check the win-rate against our fixed opponent:
+
+
+![Eval Win Rate](/docs/win_rate.png)
+
+There are certainly significant win-rate gains during training, although Codenames seems to diverge from it's 45% peak dowards the end of training. ColonelBlotto looks pretty much textbook and how we would expect it to. These results indicate that the model certainly learned something and managed to more than double it's eval performance.
+
+Now we can move to evaluating this checkpoint offline against a stronger <8B model, and subsequently online.
+
+
+## Setting up Offline & Online Evaluation
+Before running any eval, we first need to figure out a good way of loading and running the model we just trained. Generally speaking there are a lot of ways to do this, but my favourite one is to merge the lora weights into the model and uplod the merged model to HF. Here is the script I usually use:
+
+
+```python
+import argparse
+
+from peft import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Merge LoRA weights into a base model and push to HuggingFace")
+    parser.add_argument("--base-model", type=str, required=True, help="HuggingFace path to the base model",)
+    parser.add_argument("--lora-path", type=str, required=True, help="Path to the LoRA adapter weights")
+    parser.add_argument("--target-path", type=str, required=True, help="HuggingFace path to save the merged model",)
+    parser.add_argument("--device", type=str, default="cpu", help="Device to use for merging (cuda, cpu)",)
+    parser.add_argument("--dtype", type=str, default="float16", choices=["float16", "bfloat16", "float32"], help="Data type for model loading and saving",)
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    print(f"Loading base model from {args.base_model}")
+
+    # Load base model
+    model = AutoModelForCausalLM.from_pretrained(
+        args.base_model, 
+        device_map="cpu", 
+        trust_remote_code=True
+    )
+
+    # Load tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.base_model, 
+        trust_remote_code=True
+    )
+
+    print(f"Loading LoRA adapter from {args.lora_path}")
+    # Load and merge LoRA weights
+    model = PeftModel.from_pretrained(model, args.lora_path)
+    print("Merging LoRA weights with base model")
+    model = model.merge_and_unload()
+
+    print(f"Saving merged model to {args.target_path}")
+    # Save the merged model
+    model.push_to_hub(args.target_path)
+    tokenizer.push_to_hub(args.target_path)
+
+    print("Merge and save completed successfully!")
+
+if __name__ == "__main__":
+    main()
+```
+
+All checkpoints from our training run can be found in the `outputs` folder (sorted by date and time). Since we ran the training for 200 iterations, the final checkpoint will be iteration 199. Here is how you can call the above merging script (I stored it as `merge_model.py`):
+```bash
+python3 merge_model.py --base-model "qwen/Qwen3-8B-Base" --lora-path "YOUR_LORA_CKPT_FOLDER" --target-path "YOUR_WANDB_TARGET_NAME" 
+```
+In my case:
+```bash
+python3 merge_model.py --base-model "qwen/Qwen3-8B-Base" --lora-path "/home/guertlerlo/Desktop/MindGames/outputs/2025-07-18/13-35-10/Test-Qwen3-8B-Base-Codenames-v0-train,ColonelBlotto-v0-train,ThreePlayerIPD-v0-train-1752816906/checkpoints/iteration-199" --target-path "LeonGuertler/MindGamesDemoRun" 
+```
+
+This will run for maybe 10min or so depending on your hardware and internet speed. Once done, we can use the `HFLocalAgent` we provide as part of TextArena to load the model into a game-playing format. But I am paranoid, so usually prefer to build things from scratch to make sure it's working as intended. So, Let's build our own game-playing (TextArena compatible) class for the checkpoint we just trained. 
+
+The key components are: loading the model, formatting the inputs, extracting the actions and populating the `__call__` function. Here is what I wrote:
+
+```python
+import re, torch
+from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
+
+class UnstableAgent:
+    def __init__(self, hf_name: str):
+        # load the model and tokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(hf_name)
+        self.model = AutoModelForCausalLM.from_pretrained(hf_name)
+        self.model.to("cuda" if torch.cuda.is_available() else "cpu")
+        # we will just copy the exact fromatting and extraction
+        # functions from UnstableBaselines
+
+    def _format_prompt(self, obs: str) -> str:
+        return (
+            f"<|im_start|>user\nYou are playing a two-player zero-sum game. Make valid actions to win.\n"
+            f"Observation: {obs}\nPlease reason step by step, and put your final answer within \\boxed{{}}.<|im_end|>\n"
+            "<|im_start|>assistant\n"
+        )
+
+    def _action_extraction(self, raw_action: str) -> str:
+        matches = re.findall(r"\\boxed\{(.*?)\}", raw_action)
+        if matches: 
+            last_match = matches[-1].strip()
+            if last_match: 
+                return f"[{last_match}]" if "[" not in last_match else last_match
+        return raw_action
+
+    def __call__(self, observation: str) -> str:
+        prompt = self._format_prompt(observation)
+        inputs = self.tokenizer(
+            prompt, 
+            return_tensors="pt"
+        ).to(self.model.device)
+
+        gen_out = self.model.generate(
+            **inputs,
+            max_new_tokens=4096,
+            temperature=0.6,
+            top_p=0.95,
+            do_sample=True,
+            pad_token_id=self.tokenizer.eos_token_id,
+        )
+
+        # only take the newly‑generated portion
+        gen_ids = gen_out[0, inputs["input_ids"].shape[-1]:]
+        raw_action = self.tokenizer.decode(
+            gen_ids, 
+            skip_special_tokens=False
+        )
+        return self._action_extraction(
+            raw_action=raw_action
+        )
+```
+
+Alrighty, now we will use this to first evaluate the model offline, and then online.
 
 
 ## Offline Evaluation
@@ -347,17 +492,145 @@ Before evaluating the model online, let's run some preliminarly offline evals. T
 We will use the standard TextArena offline eval script:
 
 ```python
-TODO - include the lora loading
-```
-TODO - offline evaluation
-TODO - this is how you can load your checkpoint and evaluate it on textarena
 
+import os
+from collections import defaultdict
+
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+
+import textarena as ta
+
+# local import
+from model_class import UnstableAgent
+
+NUM_EPISODES = 16
+EVAL_ENV_IDS = [("Codenames-v0-train", 4), ("ColonelBlotto-v0-train", 2), ("ThreePlayerIPD-v0-train", 3)]  # (env-id, num_players)
+OPPONENT_NAME = "openai/gpt-4.1-nano"
+FILE_NAME = "eval_summary.csv"
+
+# Model to evaluate
+model = UnstableAgent(hf_name="LeonGuertler/MindGamesDemoRun")
+
+# Fixed opponent
+opponent = ta.agents.OpenRouterAgent(model_name=OPPONENT_NAME)
+
+
+def run_game(env_id: str, num_players: int, model, opponent) -> dict:
+    """Play one episode and return per-episode stats for the *model* player."""
+    env = ta.make(env_id)
+    env.reset(num_players=num_players)
+
+    model_pid = np.random.randint(0, num_players)    # random seat
+    done = False
+
+    while not done:
+        pid, obs = env.get_observation()
+        action = model(obs) if pid == model_pid else opponent(obs)
+        done, _ = env.step(action=action)
+
+    rewards, game_info = env.close()
+
+    return {
+        "model_reward": rewards[model_pid],
+        "opponent_reward": np.mean([rewards[i] for i in range(num_players) if i != model_pid]),
+        "invalid_move": bool(game_info[model_pid]["invalid_move"]),
+        "turn_count":  game_info[model_pid]["turn_count"],
+    }
+
+
+results = defaultdict(list)
+
+outer_bar = tqdm(EVAL_ENV_IDS, desc="Environments")
+for env_id, num_players in outer_bar:
+
+    # per-environment aggregates
+    stats = dict(
+        wins=0,
+        losses=0,
+        draws=0,
+        total_reward_model=0.0,
+        total_reward_opponent=0.0,
+        total_invalid_moves=0,
+        total_turns=0,
+    )
+
+    inner_bar = tqdm(range(NUM_EPISODES), desc=f"Evaluating {env_id}", leave=False)
+    for _ in inner_bar:
+        outcome = run_game(env_id, num_players, model, opponent)
+
+        # W/L/D
+        if outcome["model_reward"] > outcome["opponent_reward"]:
+            stats["wins"] += 1
+        elif outcome["model_reward"] < outcome["opponent_reward"]:
+            stats["losses"] += 1
+        else:
+            stats["draws"] += 1
+
+        # Accumulate metrics
+        stats["total_reward_model"]     += outcome["model_reward"]
+        stats["total_reward_opponent"]  += outcome["opponent_reward"]
+        stats["total_invalid_moves"]    += int(outcome["invalid_move"])
+        stats["total_turns"]            += outcome["turn_count"]
+
+        # Live progress bar
+        games_done = _ + 1
+        inner_bar.set_postfix({
+            "Win%":   f"{stats['wins']   / games_done:.1%}",
+            "Loss%":  f"{stats['losses'] / games_done:.1%}",
+            "Draw%":  f"{stats['draws']  / games_done:.1%}",
+            "Inv%":   f"{stats['total_invalid_moves'] / games_done:.1%}",
+            "Turns":  f"{stats['total_turns'] / games_done:.1f}",
+        })
+
+    # write per-environment summary
+    results["env_id"].append(env_id)
+    results["win_rate"].append(stats["wins"] / NUM_EPISODES)
+    results["loss_rate"].append(stats["losses"] / NUM_EPISODES)
+    results["draw_rate"].append(stats["draws"] / NUM_EPISODES)
+    results["invalid_rate"].append(stats["total_invalid_moves"] / NUM_EPISODES)
+    results["avg_turns"].append(stats["total_turns"] / NUM_EPISODES)
+    results["avg_model_reward"].append(stats["total_reward_model"] / NUM_EPISODES)
+    results["avg_opponent_reward"].append(stats["total_reward_opponent"] / NUM_EPISODES)
+
+df = pd.DataFrame(results)
+
+print("\n=== Evaluation Summary ===")
+print(df.to_markdown(index=False, floatfmt=".3f"))
+
+"""
+Should look like this:
+| env_id       |   win_rate |   loss_rate |   draw_rate |   invalid_rate |   avg_turns |   avg_model_reward |   avg_opponent_reward |
+|:-------------|-----------:|------------:|------------:|---------------:|------------:|-------------------:|----------------------:|
+| TicTacToe-v0 |      0.500 |       0.375 |       0.125 |          0.000 |       4.125 |              0.125 |                -0.125 |
+| Snake-v0     |      0.250 |       0.625 |       0.125 |          0.000 |       3.875 |             -0.458 |                 0.028 |
+"""
+
+# Persist to CSV
+os.makedirs("eval_results", exist_ok=True)
+df.to_csv(f"eval_results/{FILE_NAME}", index=False)
+print(f"\nSaved -> eval_results/{FILE_NAME}")
+```
+
+This is a minimally edited version of the `offline_eval.py` script we provide in textarena. Running this will take a while (depending on how many games and which opponent you select it can take 2+h; would be much faster if you run it in parallel, but we haven't added that yet) and will both pretty-print and store the final results.
+
+```
+=== Evaluation Summary ===
+| env_id                  |   win_rate |   loss_rate |   draw_rate |   invalid_rate |   avg_turns |   avg_model_reward |   avg_opponent_reward |
+|:------------------------|-----------:|------------:|------------:|---------------:|------------:|-------------------:|----------------------:|
+| Codenames-v0-train      |      0.438 |       0.375 |       0.188 |          0.000 |       0.000 |              0.062 |                -0.021 |
+| ColonelBlotto-v0-train  |      0.250 |       0.562 |       0.188 |          0.000 |       7.812 |             -0.312 |                 0.312 |
+| ThreePlayerIPD-v0-train |      0.812 |       0.062 |       0.125 |          0.000 |      10.000 |              0.750 |                -0.438 |
+```
+
+The results looks pretty good, especially for `ThreePlayerIPD-v0`. It's a bit hard to say if they are amazing or not, but as you train and eval multiple models, this will be a great proxy for online eval performance! Anyway, good enough for now, let's move on to the online eval part.
 
 
 
 
 ## Online Evaluation
-Given the mostly strong offline eval results we achieved with the checkpoint, we can now move on to evaluating the model on TextArena. To that end, we need the following information:
+To run your models in the online leaderboard you'll need three things:
 1. Our Model name - you need to come up with this and it has to be unique
 2. Our Model description - optimally informative, but up to you haha
 3. Our Team hash - when you register your team for the competition ([here](https://www.mindgamesarena.com/timeline)) you should receive it within 24h via email.
@@ -396,8 +669,74 @@ print(f"Game-Info: {game_info})
 
 ```
 Running the above will look a little like this:
-TODO
 
+```
+✅ Registered 'LeonDemo' with deterministic token: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+Environment                    | Wrappers
+----------------------------------------------------------------------
+Codenames-v0-train             | GameMessagesAndCurrentBoardObservationWrapper, ActionFormattingWrapper
+ColonelBlotto-v0-train         | GameMessagesAndCurrentBoardObservationWrapper, ActionFormattingWrapper
+ThreePlayerIPD-v0-train        | LLMObservationWrapper, ClipCharactersActionWrapper
+
+Connecting to matchmaking server: wss://matchmaking.textarena.ai/ws?model_name=LeonDemo&model_token=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+Sent queue request for environments: [65, 82, 83]
+Received from matchmaking: {"command": "queued", "avg_queue_time": 63.52393538433572, "num_players_in_queue": 6}
+In queue. Average wait time: 63.5s. Players in queue: 6
+
+```
+
+By default the subset will use the `-train` version of each environment, but you can always change the wrappers to whatever you prefer. The above message indicates that our model is registered, all data is correct and we are currently in the queue for playing. Depending on the time of day etc. matchmaking can be fast or slow.
+
+Once a match is found, the terminal will print all observations and actions, so it relatively easy to track what your model is doing, ie.e.:
+```
+[...]
+Received: {"command": "observation", "observation": [[0, "[A5 B10 C5]", 2], [-1, "\nRound 2\nCommander Alpha allocated: A: 5 , B: 10, C: 5 \nCommander Beta allocated:  A: 4 , B: 7 , C: 9 \nWinner: Commander Alpha", 4], [-1, "=== COLONEL BLOTTO - Round 3/9 ===\nRounds Won - Commander Alpha: 1, Commander Beta: 1\nAvailable fields: A, B, C\nUnits to allocate: 20\nFormat: '[A4 B2 C2]'.", 5]], "player_id": 0}
+Received observation for player 0
+Sent action: [A5 B10 C5]...
+Received: {"command": "action_ack", "message": "Action received"}
+Action acknowledged by server
+Received: {"command": "action_ack", "message": "Action received"}
+Action acknowledged by server
+Received: {"command": "pong"}
+Received: {"command": "observation", "observation": [[0, "[A5 B10 C5]", 2], [-1, "\nRound 3\nCommander Alpha allocated: A: 5 , B: 10, C: 5 \nCommander Beta allocated:  A: 4 , B: 7 , C: 9 \nWinner: Commander Alpha", 4], [-1, "=== COLONEL BLOTTO - Round 4/9 ===\nRounds Won - Commander Alpha: 2, Commander Beta: 1\nAvailable fields: A, B, C\nUnits to allocate: 20\nFormat: '[A4 B2 C2]'.", 5]], "player_id": 0}
+Received observation for player 0
+Sent action: [A5 B5 C10]...
+Received: {"command": "action_ack", "message": "Action received"}
+Action acknowledged by server
+Received: {"command": "action_ack", "message": "Action received"}
+Action acknowledged by server
+Received: {"command": "pong"}
+Received: {"command": "observation", "observation": [[0, "[A5 B5 C10]", 2], [-1, "\nRound 4\nCommander Alpha allocated: A: 5 , B: 5 , C: 10\nCommander Beta allocated:  A: 4 , B: 7 , C: 9 \nWinner: Commander Alpha", 4], [-1, "=== COLONEL BLOTTO - Round 5/9 ===\nRounds Won - Commander Alpha: 3, Commander Beta: 1\nAvailable fields: A, B, C\nUnits to allocate: 20\nFormat: '[A4 B2 C2]'.", 5]], "player_id": 0}
+Received observation for player 0
+Sent action: [A5 B5 C10]...
+Received: {"command": "action_ack", "message": "Action received"}
+Action acknowledged by server
+Received: {"command": "action_ack", "message": "Action received"}
+Action acknowledged by server
+Received: {"command": "pong"}
+Received: {"command": "observation", "observation": [[0, "[A5 B5 C10]", 2], [-1, "\nRound 5\nCommander Alpha allocated: A: 5 , B: 5 , C: 10\nCommander Beta allocated:  A: 4 , B: 7 , C: 9 \nWinner: Commander Alpha", 4], [-1, "=== COLONEL BLOTTO - Round 6/9 ===\nRounds Won - Commander Alpha: 4, Commander Beta: 1\nAvailable fields: A, B, C\nUnits to allocate: 20\nFormat: '[A4 B2 C2]'.", 5]], "player_id": 0}
+[...]
+```
+
+And once the game is done, you'll see your results:
+```
+Received: {"command": "game_over", "outcome": "win", "reward": 1, "trueskill_change": 4.396, "new_trueskill": 29.396, "reason": "Commander Alpha wins 5-1 (majority achieved)!", "game_id": 54927, "opponents": "Humanity", "opponents_ts": "20.604", "opponents_with_ids": "1:Humanity"}
+Game over received
+Game over: win, reason: Commander Alpha wins 5-1 (majority achieved)!
+Game over received, waiting for additional messages...
+Timeout after 5.0s while waiting for additional messages after game over
+Received: {"command": "pong"}
+Timeout after 11.4s while waiting for additional messages after game over
+Timeout after 16.4s while waiting for additional messages after game over
+Timeout after 21.4s while waiting for additional messages after game over
+WebSocket connection closed by server
+```
+
+We will make this a bit prettier in the future, but the ghist is that our model won the game, gained +4.396 TrueSkill, has a new TrueSkill rating of "29.396", and we actually won against a human player.
+
+Generally, if you are confident your code is running well and the model is performing, you can just run the above code in a loop to play a lot of games.
+
+The online leaderboard is updated once an hour or so. Once updated, you should see yourself on the leaderboard (note that models with fewer than 15 games in the last two weeks count as "inactive", so won't be counted in the final evaluation for the competition (also you will need to tick the "show inactive" box to see your model if it is inactive)).
 
 TODO - here are the final results
 
