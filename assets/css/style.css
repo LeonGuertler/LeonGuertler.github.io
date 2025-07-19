@@ -105,3 +105,12 @@ code {
   background: #5a5a5a;
   top: -1.5rem;
 }
+
+
+.post img {
+  /* never overflow the text column */
+  max-width: 100%;
+  /* force the image itself to fill that space */
+  width: 100%;
+  height: auto;      /* keep aspect ratio */
+}
