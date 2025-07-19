@@ -3,6 +3,7 @@
 
 html, body {
   font-family: "Ubuntu Mono", monospace;
+  background-color: #0B2B26; /*!important; /* Add !important to force the override */
   background-color: #464646; /*!important; /* Add !important to force the override */
   color: #c5bfbf; /* Light text */
   margin: 0;
