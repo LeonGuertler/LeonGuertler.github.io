@@ -329,7 +329,7 @@ finally:
 I put the code into a script called **mind_games_demo.py**, so will run it via `python3 mind_games_demo.py`.
 You can now open a new terminal on the same machine and track your training run via `unstable-terminal`, which will look something like this:
 
-![](https://github.com/LeonGuertler/LeonGuertler.github.io/blob/main/docs/unstable-terminal.gif)
+![](/docs/unstable-terminal.gif){: width="100%" }
 
 
 
