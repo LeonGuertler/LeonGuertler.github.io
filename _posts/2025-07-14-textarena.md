@@ -83,21 +83,21 @@ Whilst not being very scalable, this worked (albeit with some annoying delays be
 
 Next up, we started building the frontend. Using **Vercel** was another great recommendation by Henry. We initially didn't know about **v0** (more about that later), but it seemed easy enough to pick one of their templates, make the changes we needed to make and run it. Neither of us knew (or know now) any frontend langauges. So, GPT and Claude (especially Claude) were extremely helpful in making those changes. In hindsight, the website was not exactly a thing of beauty (see below), but hey it worked.
 
-![TextArena Early Days](/docs/textarena-og.png)
+![TextArena Early Days](/docs/textarena-og.png){:style="max-width:50%;height:auto;"}
 
 We designed the website to comprise both a functional leaderboard and the human play component. However, every database query was running via our single backend server, as did the human play. These made the system increasingly unscalable as the database grew. To make matters worse, we were running the backend on one of Leon's machines in Germany (which he accessed using ngrok...), which further limited performance and reliability. These bottlenecks and system design flaws were exactly what we aimed to address in version 2.
 
 Fittingly, the day before we finished building version 1 on Friday, January 31st, Andrej Karpathy tweeted the following:
 
-![Karpathy Tweet](/docs/karparthy-tweet-initial.png)
+![Karpathy Tweet](/docs/karparthy-tweet-initial.png){:style="max-width:50%;height:auto;"}
 
 This was perfect timing. Eager to get feedback from the community, we commented on the tweet and went to bed.
 
-![Leon's Reply](/docs/leon-reply.png)
+![Leon's Reply](/docs/leon-reply.png){:style="max-width:50%;height:auto;"}
 
 Leon remembers waking up at around 5am or so to use the bathroom and casually checking his phone, only to find a perplexing amount of notifications. To his surprise, Andrej had not only seen the reply, but had also been kind enough to highlight our work:
 
-![Karpathy's Reply](/docs/karparthy-reply.png)
+![Karpathy's Reply](/docs/karparthy-reply.png){:style="max-width:50%;height:auto;"}
 
 Naturally, everything broke almost instantly (though we figured that having enough users to break the system was a good problem to have). Surprisingly, the main issue wasn’t the API-based communication or even the monolithic backend server (which also doubled as the game server). But rather, it was ngrok... 
 
@@ -116,7 +116,7 @@ Secondly, we updated the backend and python package to work with WebSockets. Sho
 
 Whilst iteratively refining the frontend, we managed to port the backend over to a serverless structure on AWS. At the time we were also exploring building VideoGameArena--an arena for old-school video games like Mortal Kombat, Super Mario and Zelda.
 
-![videogamearena](/docs/videogamearena.png)
+![videogamearena](/docs/videogamearena.png){:style="max-width:50%;height:auto;"}
 
 Not a bad thing actually. The specific nature of VideoGameArena required an Ubuntu-based environment and precise Python library versions. So, we had no choice but to build it serverless. Although that project is now on hold, the experience gave us a better understanding of what serverless really means and how to (or at least try to) design one properly for TextArena.
 

@@ -736,7 +736,7 @@ We will make this a bit prettier in the future, but the ghist is that our model 
 
 Generally, if you are confident your code is running well and the model is performing, you can just run the above code in a loop to play a lot of games.
 
-The online leaderboard is updated once an hour or so. Once updated, you should see yourself on the leaderboard (note that models with fewer than 15 games in the last two weeks count as "inactive", so won't be counted in the final evaluation for the competition (also you will need to tick the "show inactive" box to see your model if it is inactive)).
+The online leaderboard is updated once an hour or so. Once updated, you should see yourself on the leaderboard (note that models with fewer than 5 games in the last two weeks count as "inactive", so won't be counted in the final evaluation for the competition (also you will need to tick the "show inactive" box to see your model if it is inactive)).
 
 TODO - here are the final results
 
