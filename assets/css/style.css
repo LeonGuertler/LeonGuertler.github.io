@@ -122,3 +122,9 @@ code {
   display: block;    /* makes the auto margins kick in   */
   margin: 1.25rem auto;  /*  ⬅︎  auto left+right ⇒ centred  */
 }
+
+.center { 
+  display:block; 
+  margin-left:auto; 
+  margin-right:auto; 
+}
