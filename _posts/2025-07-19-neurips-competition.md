@@ -339,11 +339,11 @@ We can also track the results via Weights & Biases. Keep in mind that the eval p
 ### Training perf.
 Tbh, all of these are proxies, but when try to read the w&b tealeafs for self-play runs, I usually first check the game length and invalid move rates. Those will be good proxies for the model learning how to play the game (although you need to keep the environment design in mind, more on that in a bit):
 
-![WnB Game Length](/docs/game_length.png)
+![WnB Game Length](/docs/game_length.png){: width="100%" }
 
 As you can see, the game length (and change thereof) differs significantly for the different envs. ThreePlayerIPD does not really have invalid moves (which actually makes training a bit harder), so the runs always last 30 turns. Codenames does have invalid moves (the turn will be skipped) and you can see the models initially learning to descibe words well enough that the game length goes down to 12 or so turns, before coming back up (without looking at the games it is hard to say why this is happening). ColonelBlotto, the easiest out of the three games looks great. Game length is stably increasingly as expected (since here invalid moves will actually end the game). Again, I do want to highlight, this is essentially tealeaf reading, AI is alchemy, not a science and at best you can build your intuition for how to interpret these things.
 
-![Invalid Move Rate](/docs/inv_move_rate.png)
+![Invalid Move Rate](/docs/inv_move_rate.png){: width="100%" }
 
 
 Another good proxy (depending on the environment) is the invalid move rate of the model. As you can see, it's going down stably, which is a great sign.
@@ -353,7 +353,7 @@ Another good proxy (depending on the environment) is the invalid move rate of th
 Given that the training performance mostly looks good, we can now move on to checkinig the eval games we ran during training. Here we will simply check the win-rate against our fixed opponent:
 
 
-![Eval Win Rate](/docs/win_rate.png)
+![Eval Win Rate](/docs/win_rate.png){: width="100%" }
 
 There are certainly significant win-rate gains during training, although Codenames seems to diverge from it's 45% peak dowards the end of training. ColonelBlotto looks pretty much textbook and how we would expect it to. These results indicate that the model certainly learned something and managed to more than double it's eval performance.
 
@@ -732,7 +732,7 @@ Timeout after 21.4s while waiting for additional messages after game over
 WebSocket connection closed by server
 ```
 
-We will make this a bit prettier in the future, but the ghist is that our model won the game, gained +4.396 TrueSkill, has a new TrueSkill rating of "29.396", and we actually won against a human player.
+We will make this a bit prettier in the future, but the ghist is that our model won the game, gained **+4.396 TrueSkill**, has a new TrueSkill rating of **29.396**, and we actually won against a human player.
 
 Generally, if you are confident your code is running well and the model is performing, you can just run the above code in a loop to play a lot of games.
 
