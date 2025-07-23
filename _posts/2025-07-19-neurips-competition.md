@@ -421,7 +421,7 @@ if __name__ == "__main__":
 
 All checkpoints from our training run can be found in the `outputs` folder (sorted by date and time). Since we ran the training for 200 iterations, the final checkpoint will be iteration 199. Here is how you can call the above merging script (I stored it as `merge_model.py`):
 ```bash
-python3 merge_model.py --base-model "qwen/Qwen3-8B-Base" --lora-path "YOUR_LORA_CKPT_FOLDER" --target-path "YOUR_WANDB_TARGET_NAME" 
+python3 merge_model.py --base-model "qwen/Qwen3-8B-Base" --lora-path "YOUR_LORA_CKPT_FOLDER" --target-path "YOUR_HF_TARGET_NAME" 
 ```
 In my case:
 ```bash
