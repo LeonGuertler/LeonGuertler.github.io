@@ -20,6 +20,7 @@ You can install UnstableBaselines via ```pip install unstable-rl``` (this will a
 ## UnstableBaselines
 Here is a very brief overview of how **UnstableBaselines** works:
 
+```
  ┌─────────┐ ┌─────────┐             ┌────────────┐
  │   Env   │ │  Model  │ Get Models  │    Model   │
  │ Sampler │ │ Sampler │◀─────────── │  Registry  │
@@ -53,7 +54,7 @@ Trajectory │ │ n parallel
      │  run_game() │
      │  train/eval │
      └─────────────┘
-
+```
 
 You can find the documentation [here](https://github.com/LeonGuertler/UnstableBaselines/blob/main/docs/documentation.md).
 
