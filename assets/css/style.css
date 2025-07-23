@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;700&display=swap");
 @import url("/assets/css/rouge.css"); /* Add this for syntax highlighting */
 
 html, body {
@@ -23,10 +24,16 @@ header, main {
   margin: 0 auto;
 }
 
-pre, code {
+/* pre, code {
   font-family: "Ubuntu Mono", monospace;
-  /*background-color: transparent; /* No background */
+  /*background-color: transparent; /* No background 
   color: #e0e0e0;
+} */
+
+.code-wrapper pre {
+  /* 2️⃣  Put Fira Mono first, then fall back */
+  font-family: "Fira Mono", "DejaVu Sans Mono", "Ubuntu Mono", monospace;
+  font-variant-east-asian: normal;   /* stops half‑width rendering in some browsers */
 }
 
 pre {
