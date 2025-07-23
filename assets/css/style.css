@@ -30,10 +30,15 @@ header, main {
   color: #e0e0e0;
 } */
 
+pre, code,
+.highlight, .highlight *,
 .code-wrapper pre {
-  /* 2️⃣  Put Fira Mono first, then fall back */
-  font-family: "Fira Mono", "DejaVu Sans Mono", "Ubuntu Mono", monospace;
-  font-variant-east-asian: normal;   /* stops half‑width rendering in some browsers */
+  font-family:
+    "Fira Mono",        /* full box‑drawing set, true mono */
+    "DejaVu Sans Mono", /* local fallback that also works   */
+    "Ubuntu Mono",      /* your preferred body mono         */
+    monospace;
+  font-variant-east-asian: normal; /* 3 ▸ keep glyphs full‑width */
 }
 
 pre {
