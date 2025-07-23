@@ -17,7 +17,7 @@ As for the training script, since 8B is rather big, we will use [UnstableBaselin
 
 You can install UnstableBaselines via ```pip install unstable-rl``` (this will also install TextArena and anything else you need).
 
-## UnstableBaselines
+<!-- ## UnstableBaselines
 Here is a very brief overview of how **UnstableBaselines** works:
 
 ```
@@ -56,7 +56,7 @@ Trajectory │ │ n parallel
      └─────────────┘
 ```
 
-You can find the documentation [here](https://github.com/LeonGuertler/UnstableBaselines/blob/main/docs/documentation.md).
+You can find the documentation [here](https://github.com/LeonGuertler/UnstableBaselines/blob/main/docs/documentation.md). -->
 
  
 
